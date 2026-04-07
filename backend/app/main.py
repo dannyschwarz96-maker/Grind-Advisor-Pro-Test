@@ -12,9 +12,7 @@ app = FastAPI(title="Grind Advisor Cloud API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://grind-advisor-pro-test-v1.vercel.app",
-        "https://grind-advisor-pro-test-git-6779f3-dannyschwarz96-5700s-projects.vercel.app",
-        "https://grind-advisor-pro-test-v1-lg7w3wobc.vercel.app",
+        "grind-advisor-pro-test.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
