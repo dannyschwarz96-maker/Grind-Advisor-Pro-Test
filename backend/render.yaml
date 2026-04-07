@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: grind-advisor-api
+    env: docker
+    plan: free
+    autoDeploy: true
+    rootDir: backend
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 43200
+      - key: MODEL_DIR
+        value: /tmp/models
