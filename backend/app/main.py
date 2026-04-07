@@ -1,12 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Grind Advisor Cloud API")
+from .db import Base, engine
+from .routers import auth, beans, shots, predict, imports
+
+app = FastAPI(title="Grind Advisor Cloud API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://grind-advisor-pro-test.vercel.app"
+        "https://grind-advisor-pro-test.vercel.app",
+        "https://grind-advisor-pro-test-v1.vercel.app",
+        "https://grind-advisor-pro-test-git-6779f3-dannyschwarz96-5700s-projects.vercel.app",
+        "https://grind-advisor-pro-test-v1-lg7w3wobc.vercel.app",
     ],
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
@@ -14,23 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from .config import settings
-from .db import Base, engine
-from .routers import auth, beans, shots, predict, imports
-
 Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="Grind Advisor Cloud API", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "grind-advisor-pro-test.vercel.app"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/health")
 def health():
