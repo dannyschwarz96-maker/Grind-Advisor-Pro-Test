@@ -1,7 +1,6 @@
 """
 db.py – Neon (PostgreSQL) connection management
-Uses a connection-per-request pattern suitable for Render Free Tier
-(no persistent connection pool; Neon handles serverless well)
+Compatible with Render + Neon serverless setup
 """
 
 import os
@@ -14,8 +13,11 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 @contextmanager
 def get_db():
-    """Context manager: opens a connection, commits or rolls back, then closes."""
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    """Open connection per request (serverless-safe)"""
+    conn = psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
     try:
         yield conn
         conn.commit()
@@ -28,31 +30,33 @@ def get_db():
 
 def init_db():
     """
-    Create all tables if they don't exist.
-    Called once on app startup (safe to run repeatedly – idempotent).
+    Idempotent schema creation for Neon PostgreSQL
     """
     with get_db() as conn:
         with conn.cursor() as cur:
+
+            # IMPORTANT: required for gen_random_uuid()
             cur.execute("""
-                -- Users table
+                CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+            """)
+
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    email       TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    created_at  TIMESTAMPTZ DEFAULT NOW()
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    email           TEXT UNIQUE NOT NULL,
+                    password_hash   TEXT NOT NULL,
+                    created_at      TIMESTAMPTZ DEFAULT NOW()
                 );
 
-                -- Beans table
                 CREATE TABLE IF NOT EXISTS beans (
                     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     name        TEXT NOT NULL,
-                    roast       TEXT CHECK (roast IN ('light', 'medium', 'dark')) DEFAULT 'medium',
+                    roast       TEXT CHECK (roast IN ('light','medium','dark')) DEFAULT 'medium',
                     origin      TEXT,
                     created_at  TIMESTAMPTZ DEFAULT NOW()
                 );
 
-                -- Shots table (central data for ML)
                 CREATE TABLE IF NOT EXISTS shots (
                     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -66,13 +70,13 @@ def init_db():
                     created_at      TIMESTAMPTZ DEFAULT NOW()
                 );
 
-                -- Serialized per-user ML models (blob stored in DB → survives Render restarts)
                 CREATE TABLE IF NOT EXISTS user_models (
                     user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                     model_blob  TEXT NOT NULL,
-                    n_samples   INTEGER NOT NULL DEFAULT 0,
+                    n_samples   INTEGER DEFAULT 0,
                     r2_score    REAL,
                     updated_at  TIMESTAMPTZ DEFAULT NOW()
                 );
             """)
-    print("[DB] Schema initialized.")
+
+    print("[DB] Schema initialized successfully.")
