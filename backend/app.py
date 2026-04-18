@@ -33,11 +33,13 @@ FRONTEND_URL = os.environ.get(
 
 CORS(
     app,
-    origins=[
-        FRONTEND_URL,
-        "http://localhost:3000",
-        "http://127.0.0.1:5500"
-    ],
+    resources={r"/api/*": {
+        "origins": [
+            FRONTEND_URL,
+            "http://localhost:3000",
+            "http://127.0.0.1:5500"
+        ]
+    }},
     supports_credentials=True
 )
 
@@ -75,6 +77,12 @@ def method_not_allowed(e):
 @app.errorhandler(500)
 def internal_error(e):
     return jsonify({"error": "Internal server error"}), 500
+
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+    return response
 
 
 # --------------------------------------------------
