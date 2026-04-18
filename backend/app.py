@@ -1,10 +1,5 @@
 """
-app.py – Grind Advisor Pro backend entry point
-
-Render Free Tier notes:
-  - Single worker (gunicorn --workers 1) to avoid model-store race conditions
-  - DB init runs on startup (idempotent CREATE TABLE IF NOT EXISTS)
-  - /health endpoint for frontend keep-alive ping (avoids cold starts during active use)
+Grind Advisor Pro – Backend Entry Point
 """
 
 import os
@@ -14,36 +9,59 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# DB + Routes
 from db import init_db
 from routes.auth import auth_bp
 from routes.beans import beans_bp
 from routes.shots import shots_bp
 from routes.recommend import recommend_bp
 
+
+# --------------------------------------------------
+# Flask App
+# --------------------------------------------------
 app = Flask(__name__)
 
-# CORS: allow your Vercel frontend (set FRONTEND_URL env var in Render dashboard)
-frontend_url = os.environ.get("FRONTEND_URL", "*")
-CORS(app, origins=[frontend_url, "http://localhost:3000", "http://127.0.0.1:5500"],
-     supports_credentials=True)
 
-# Register blueprints
-app.register_blueprint(auth_bp,       url_prefix="/api/auth")
-app.register_blueprint(beans_bp,      url_prefix="/api/beans")
-app.register_blueprint(shots_bp,      url_prefix="/api/shots")
-app.register_blueprint(recommend_bp,  url_prefix="/api")
+# --------------------------------------------------
+# CORS CONFIG (IMPORTANT FOR VERCEL FRONTEND)
+# --------------------------------------------------
+FRONTEND_URL = os.environ.get(
+    "FRONTEND_URL",
+    "https://grind-advisor-pro-test.vercel.app"
+)
+
+CORS(
+    app,
+    origins=[
+        FRONTEND_URL,
+        "http://localhost:3000",
+        "http://127.0.0.1:5500"
+    ],
+    supports_credentials=True
+)
 
 
+# --------------------------------------------------
+# REGISTER BLUEPRINTS
+# --------------------------------------------------
+app.register_blueprint(auth_bp, url_prefix="/api/auth")
+app.register_blueprint(beans_bp, url_prefix="/api/beans")
+app.register_blueprint(shots_bp, url_prefix="/api/shots")
+app.register_blueprint(recommend_bp, url_prefix="/api")
+
+
+# --------------------------------------------------
+# HEALTH CHECK (Render uptime / frontend ping)
+# --------------------------------------------------
 @app.route("/health")
 def health():
-    """
-    Lightweight health check.
-    Frontend pings this on load to wake up the Render dyno.
-    Returns 204 (no content) to minimize response size.
-    """
     return "", 204
 
 
+# --------------------------------------------------
+# ERROR HANDLERS
+# --------------------------------------------------
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Not found"}), 404
@@ -59,24 +77,20 @@ def internal_error(e):
     return jsonify({"error": "Internal server error"}), 500
 
 
-# Initialize DB schema on startup
+# --------------------------------------------------
+# DB INIT ON STARTUP
+# --------------------------------------------------
 with app.app_context():
     try:
         init_db()
+        print("[INFO] Database initialized successfully")
     except Exception as e:
         print(f"[WARNING] DB init failed: {e}")
 
 
+# --------------------------------------------------
+# LOCAL DEV ONLY
+# --------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-
-from flask_cors import CORS
-
-app = Flask(__name__)
-
-CORS(app, resources={
-    r"/*": {
-        "origins": "https://grind-advisor-pro-test.vercel.app"
-    }
-})
