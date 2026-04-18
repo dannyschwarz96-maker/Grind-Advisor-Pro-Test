@@ -1,4 +1,3 @@
-```python
 """
 Grind Advisor Pro – Backend Entry Point (Production Ready)
 """
