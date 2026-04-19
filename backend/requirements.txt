@@ -1,9 +1,0 @@
-flask==3.0.3
-flask-cors==4.0.1
-psycopg2-binary==2.9.9
-PyJWT==2.8.0
-bcrypt==4.1.3
-scikit-learn==1.5.1
-numpy==1.26.4
-gunicorn==22.0.0
-python-dotenv==1.0.1
